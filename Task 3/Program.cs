@@ -1,41 +1,84 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Swagger (for local testing)
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+static bool TryParseNatural(string? s, out long value)
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    value = 0;
 
-app.MapGet("/weatherforecast", () =>
+    if (string.IsNullOrWhiteSpace(s))
+        return false;
+
+    long v = 0;
+    foreach (var ch in s)
+    {
+        if (ch < '0' || ch > '9')
+            return false;
+        try
+        {
+            checked { v = v * 10 + (ch - '0'); }
+        }
+        catch (OverflowException)
+        {
+            return false;
+        }
+    }
+
+    if (v <= 0)
+        return false;
+
+    value = v;
+    return true;
+}
+
+static long Gcd(long a, long b)
 {
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    while (b != 0)
+    {
+        var t = a % b;
+        a = b;
+        b = t;
+    }
+    return a;
+}
+
+static bool TryLcm(long a, long b, out long lcm)
+{
+    lcm = 0;
+
+    var g = Gcd(a, b);
+    var part = a / g;
+
+    try
+    {
+        checked { lcm = part * b; }
+        return true;
+    }
+    catch (OverflowException)
+    {
+        return false;
+    }
+}
+
+app.MapGet("/berkhosgoren1_gmail_com", (string? x, string? y) =>
+{
+    if (!TryParseNatural(x, out var a) || !TryParseNatural(y, out var b))
+        return Results.Text("NaN", "text/plain");
+
+    if (!TryLcm(a, b, out var l))
+        return Results.Text("NaN", "text/plain");
+
+    return Results.Text(l.ToString(), "text/plain");
+});
 
 app.Run();
-
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
