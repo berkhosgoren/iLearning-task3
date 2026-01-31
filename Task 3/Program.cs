@@ -1,3 +1,5 @@
+using System.Numerics;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Swagger (for local testing)
@@ -12,36 +14,26 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-static bool TryParseNatural(string? s, out long value)
+static bool TryParseNatural(string? s, out BigInteger value)
 {
-    value = 0;
+    value = BigInteger.Zero;
 
     if (string.IsNullOrWhiteSpace(s))
         return false;
-
-    long v = 0;
     foreach (var ch in s)
     {
         if (ch < '0' || ch > '9')
             return false;
-        try
-        {
-            checked { v = v * 10 + (ch - '0'); }
-        }
-        catch (OverflowException)
-        {
-            return false;
-        }
     }
 
-    if (v <= 0)
-        return false;
+    // BigInteger parse (for huge numbers)
+    value = BigInteger.Parse(s);
 
-    value = v;
-    return true;
+    // Accept 0 as natural 
+    return value >= 0;
 }
 
-static long Gcd(long a, long b)
+static BigInteger Gcd(BigInteger a, BigInteger b)
 {
     while (b != 0)
     {
@@ -49,25 +41,15 @@ static long Gcd(long a, long b)
         a = b;
         b = t;
     }
-    return a;
+    return BigInteger.Abs(a);
 }
 
-static bool TryLcm(long a, long b, out long lcm)
+static BigInteger Lcm(BigInteger a, BigInteger b)
 {
-    lcm = 0;
+    if (a == 0 || b == 0)
+        return 0;
 
-    var g = Gcd(a, b);
-    var part = a / g;
-
-    try
-    {
-        checked { lcm = part * b; }
-        return true;
-    }
-    catch (OverflowException)
-    {
-        return false;
-    }
+    return BigInteger.Abs(a / Gcd(a, b) * b);
 }
 
 app.MapGet("/berkhosgoren1_gmail_com", (string? x, string? y) =>
@@ -75,9 +57,7 @@ app.MapGet("/berkhosgoren1_gmail_com", (string? x, string? y) =>
     if (!TryParseNatural(x, out var a) || !TryParseNatural(y, out var b))
         return Results.Text("NaN", "text/plain");
 
-    if (!TryLcm(a, b, out var l))
-        return Results.Text("NaN", "text/plain");
-
+    var l = Lcm(a, b);
     return Results.Text(l.ToString(), "text/plain");
 });
 
